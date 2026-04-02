@@ -24,6 +24,13 @@ const selectedFilters = {
     organizers: new Set(),
 };
 
+const organizerLinks = {
+    Motorace: 'https://www.motoracepeople.com/about',
+    'Gully Racing': 'https://www.gullyracing.it/calendario',
+    Promoracing: 'https://www.promoracing.it/it/calendario/moto',
+    Rossocorsa: 'https://www.rossocorsaonline.com/prove',
+};
+
 prevMonthBtn.addEventListener('click', () => {
     currentDate.setDate(1);
     currentDate.setMonth(currentDate.getMonth() - 1);
@@ -284,22 +291,32 @@ function renderEventsList() {
 
     eventsTitle.textContent = `Eventi - ${formatDateItalian(selectedDate)}`;
 
-    const html = filteredEvents.map(event => `
+    const html = filteredEvents.map(event => {
+        const organizerUrl = organizerLinks[event.organizer];
+        const organizerLinkHtml = organizerUrl
+            ? `<a class="organizer-link-btn" href="${organizerUrl}" target="_blank" rel="noopener noreferrer">Verifica disponibilita, prezzi e prenota</a>`
+            : '';
+
+        return `
         <div class="event-card">
             <div class="event-date">${formatDateItalian(event.date)}</div>
             <div class="event-title">${event.title}</div>
-            <div class="event-details">
-                <div class="event-detail">
-                    <strong>Circuito:</strong>
-                    <span>${event.circuit}</span>
+            <div class="event-bottom-row">
+                <div class="event-details">
+                    <div class="event-detail">
+                        <strong>Circuito:</strong>
+                        <span>${event.circuit}</span>
+                    </div>
+                    <div class="event-detail">
+                        <strong>Organizzatore:</strong>
+                        <span>${event.organizer}</span>
+                    </div>
                 </div>
-                <div class="event-detail">
-                    <strong>Organizzatore:</strong>
-                    <span>${event.organizer}</span>
-                </div>
+                ${organizerLinkHtml}
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 
     eventsList.innerHTML = html;
 }
