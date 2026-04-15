@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { supabase } from './lib/supabaseClient.js';
 import { eventsData } from './data/events.js';
+import AppHeader from './components/AppHeader.jsx';
+import AuthPage from './components/AuthPage.jsx';
+import ProfilePage from './components/ProfilePage.jsx';
+import CalendarPage from './components/CalendarPage.jsx';
+import { formatDate, formatDateItalian, monthNames } from './lib/utils.js';
 
 const organizerLinks = {
     Motorace: 'https://www.motoracepeople.com/about',
@@ -8,90 +14,31 @@ const organizerLinks = {
     Rossocorsa: 'https://www.rossocorsaonline.com/prove',
 };
 
-const monthNames = [
-    'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
-    'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'
-];
-
-const weekdayLabels = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
-
-function formatDate(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-
-function formatDateItalian(dateStr) {
-    const [year, month, day] = dateStr.split('-');
-    const date = new Date(year, Number(month) - 1, day);
-    const days = ['Domenica', 'Lunedi', 'Martedi', 'Mercoledi', 'Giovedi', 'Venerdi', 'Sabato'];
-    const dayName = days[date.getDay()];
-    const monthName = monthNames[date.getMonth()];
-    return `${dayName}, ${day} ${monthName} ${year}`;
-}
-
-function getFilterTriggerLabel(selectedValues, defaultLabel) {
-    if (selectedValues.length === 0) {
-        return defaultLabel;
-    }
-
-    if (selectedValues.length === 1) {
-        return selectedValues[0];
-    }
-
-    return `${selectedValues.length} selezionati`;
-}
-
-function MultiSelect({
-    label,
-    defaultLabel,
-    values,
-    selectedValues,
-    isOpen,
-    onToggle,
-    onChange,
-    onClear,
-    menuRef,
-    controlsId,
-}) {
-    return (
-        <div className={`multi-select${isOpen ? ' open' : ''}`} ref={menuRef}>
-            <button
-                type="button"
-                className="multi-select-trigger"
-                aria-expanded={isOpen}
-                aria-controls={controlsId}
-                onClick={onToggle}
-            >
-                {getFilterTriggerLabel(selectedValues, defaultLabel)}
-            </button>
-            <div className="multi-select-panel" id={controlsId} role="group" aria-label={label}>
-                <button type="button" className="multi-select-clear" onClick={onClear}>
-                    Azzera selezione
-                </button>
-                {values.map((value, index) => {
-                    const optionId = `${controlsId}-${index}`;
-                    return (
-                        <label className="multi-select-option" htmlFor={optionId} key={value}>
-                            <input
-                                type="checkbox"
-                                id={optionId}
-                                checked={selectedValues.includes(value)}
-                                onChange={() => onChange(value)}
-                            />
-                            <span>{value}</span>
-                        </label>
-                    );
-                })}
-            </div>
-        </div>
-    );
-}
-
 function App() {
     const initialDate = new Date();
     initialDate.setDate(1);
+
+    const [user, setUser] = useState(null);
+    const [authView, setAuthView] = useState('login');
+    const [authEmail, setAuthEmail] = useState('');
+    const [authPassword, setAuthPassword] = useState('');
+    const [authFirstName, setAuthFirstName] = useState('');
+    const [authLastName, setAuthLastName] = useState('');
+    const [authError, setAuthError] = useState('');
+    const [authMessage, setAuthMessage] = useState('');
+    const [authResetSuccess, setAuthResetSuccess] = useState(false);
+    const [authLoading, setAuthLoading] = useState(false);
+    const [authConfirmPassword, setAuthConfirmPassword] = useState('');
+
+    const [profile, setProfile] = useState(null);
+    const [profileFirstName, setProfileFirstName] = useState('');
+    const [profileLastName, setProfileLastName] = useState('');
+    const [profileNickname, setProfileNickname] = useState('');
+    const [profileCountry, setProfileCountry] = useState('');
+    const [profilePhone, setProfilePhone] = useState('');
+    const [profileMessage, setProfileMessage] = useState('');
+    const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+    const [activePage, setActivePage] = useState('calendar');
 
     const [currentDate, setCurrentDate] = useState(initialDate);
     const [selectedDate, setSelectedDate] = useState(null);
@@ -103,18 +50,20 @@ function App() {
 
     const circuitMenuRef = useRef(null);
     const organizerMenuRef = useRef(null);
+    const profileAvatarRef = useRef(null);
+    const profileMenuRef = useRef(null);
     const calendarWrapperRef = useRef(null);
 
     const circuits = useMemo(() => {
-        return [...new Set(eventsData.map(event => event.circuit))].sort((a, b) => a.localeCompare(b, 'it'));
+        return [...new Set(eventsData.map((event) => event.circuit))].sort((a, b) => a.localeCompare(b, 'it'));
     }, []);
 
     const organizers = useMemo(() => {
-        return [...new Set(eventsData.map(event => event.organizer))].sort((a, b) => a.localeCompare(b, 'it'));
+        return [...new Set(eventsData.map((event) => event.organizer))].sort((a, b) => a.localeCompare(b, 'it'));
     }, []);
 
     const filteredEvents = useMemo(() => {
-        return eventsData.filter(event => {
+        return eventsData.filter((event) => {
             const circuitMatch = selectedFilters.circuits.length === 0 || selectedFilters.circuits.includes(event.circuit);
             const organizerMatch = selectedFilters.organizers.length === 0 || selectedFilters.organizers.includes(event.organizer);
             return circuitMatch && organizerMatch;
@@ -123,11 +72,17 @@ function App() {
 
     useEffect(() => {
         function handleDocumentClick(event) {
-            if (circuitMenuRef.current?.contains(event.target) || organizerMenuRef.current?.contains(event.target)) {
+            if (
+                circuitMenuRef.current?.contains(event.target) ||
+                organizerMenuRef.current?.contains(event.target) ||
+                profileMenuRef.current?.contains(event.target) ||
+                profileAvatarRef.current?.contains(event.target)
+            ) {
                 return;
             }
 
             setOpenMenu(null);
+            setProfileMenuOpen(false);
         }
 
         document.addEventListener('click', handleDocumentClick);
@@ -146,8 +101,244 @@ function App() {
         calendarWrapperRef.current.classList.add('action-boost');
     }
 
+    async function handleLogin(event) {
+        event.preventDefault();
+        setAuthError('');
+        setAuthMessage('');
+        setAuthLoading(true);
+
+        const { error } = await supabase.auth.signInWithPassword({
+            email: authEmail,
+            password: authPassword,
+        });
+
+        setAuthLoading(false);
+
+        if (error) {
+            setAuthError(error.message);
+            return;
+        }
+
+        setAuthEmail('');
+        setAuthPassword('');
+    }
+
+    async function handlePasswordReset(event) {
+        event.preventDefault();
+        setAuthError('');
+        setAuthMessage('');
+        setAuthResetSuccess(false);
+        setAuthLoading(true);
+
+        const redirectTo = new URL(import.meta.env.BASE_URL || '/', window.location.origin).toString();
+        const { error } = await supabase.auth.resetPasswordForEmail(authEmail, {
+            redirectTo,
+        });
+
+        setAuthLoading(false);
+
+        if (error) {
+            setAuthError(error.message);
+            return;
+        }
+
+        setAuthMessage('Se l\'indirizzo esiste, riceverai una mail per reimpostare la password.');
+    }
+
+    async function handleCompletePasswordReset(event) {
+        event.preventDefault();
+        setAuthError('');
+        setAuthMessage('');
+        setAuthResetSuccess(false);
+
+        if (authPassword !== authConfirmPassword) {
+            setAuthError('Le password non corrispondono.');
+            return;
+        }
+
+        setAuthLoading(true);
+        const { error } = await supabase.auth.updateUser({ password: authPassword });
+        setAuthLoading(false);
+
+        if (error) {
+            setAuthError(error.message);
+            return;
+        }
+
+        setAuthPassword('');
+        setAuthConfirmPassword('');
+        setAuthMessage('Password aggiornata con successo. Puoi ora effettuare il login con la nuova password.');
+        setAuthResetSuccess(true);
+    }
+
+    async function handleSignup(event) {
+        event.preventDefault();
+        setAuthError('');
+        setAuthMessage('');
+        setAuthLoading(true);
+
+        const { data, error } = await supabase.auth.signUp({
+            email: authEmail,
+            password: authPassword,
+        });
+
+        setAuthLoading(false);
+
+        if (error) {
+            setAuthError(error.message);
+            return;
+        }
+
+        if (data.user) {
+            const fullName = [authFirstName, authLastName].filter(Boolean).join(' ').trim() || null;
+            await supabase.from('profiles').upsert({
+                id: data.user.id,
+                email: data.user.email,
+                full_name: fullName,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            });
+        }
+
+        setAuthEmail('');
+        setAuthPassword('');
+        setAuthFirstName('');
+        setAuthLastName('');
+        setAuthView('login');
+        setAuthMessage('Registrazione completata! Accedi per iniziare a usare Trackly.');
+    }
+
+    async function handleLogout() {
+        await supabase.auth.signOut();
+        setUser(null);
+        setAuthView('login');
+        setAuthEmail('');
+        setAuthPassword('');
+        setAuthConfirmPassword('');
+        setAuthError('');
+        setAuthMessage('');
+        setAuthResetSuccess(false);
+    }
+
+    useEffect(() => {
+        async function getSession() {
+            const {
+                data: { session },
+            } = await supabase.auth.getSession();
+            setUser(session?.user ?? null);
+        }
+
+        getSession();
+
+        const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+            setUser(session?.user ?? null);
+        });
+
+        return () => {
+            authListener.subscription.unsubscribe();
+        };
+    }, []);
+
+    useEffect(() => {
+        async function handleAuthRedirect() {
+            const url = new URL(window.location.href);
+            const searchParams = url.searchParams;
+            const hash = url.hash.startsWith('#') ? url.hash.slice(1) : url.hash;
+            const hashParams = new URLSearchParams(hash.startsWith('?') ? hash.slice(1) : hash);
+
+            const errorDescription =
+                searchParams.get('error_description') ||
+                hashParams.get('error_description') ||
+                searchParams.get('error') ||
+                hashParams.get('error');
+
+            if (errorDescription) {
+                setAuthView('login');
+                setAuthError(decodeURIComponent(errorDescription.replace(/\+/g, ' ')));
+            }
+
+            const type = searchParams.get('type') || hashParams.get('type');
+            if (type === 'recovery') {
+                setAuthView('resetPassword');
+
+                const { data, error } = await supabase.auth.getSessionFromUrl();
+                if (error) {
+                    setAuthError(error.message);
+                    return;
+                }
+
+                if (data?.session?.user) {
+                    setUser(data.session.user);
+                }
+            }
+        }
+
+        handleAuthRedirect();
+    }, []);
+
+    useEffect(() => {
+        if (!user) {
+            setProfile(null);
+            setActivePage('calendar');
+            setProfileMenuOpen(false);
+            return;
+        }
+
+        async function loadProfile() {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('full_name, nickname, country, phone')
+                .eq('id', user.id)
+                .single();
+
+            if (error && error.code !== 'PGRST116') {
+                console.error('Profile fetch error', error);
+                return;
+            }
+
+            const profileData = data || {};
+            setProfile(profileData);
+
+            const nameParts = (profileData.full_name ?? '').trim().split(/\s+/);
+            setProfileFirstName(nameParts[0] ?? '');
+            setProfileLastName(nameParts.slice(1).join(' ') ?? '');
+            setProfileNickname(profileData.nickname || '');
+            setProfileCountry(profileData.country || '');
+            setProfilePhone(profileData.phone || '');
+            setProfileMenuOpen(false);
+        }
+
+        loadProfile();
+    }, [user]);
+
+    async function handleProfileSave(event) {
+        event.preventDefault();
+        setProfileMessage('');
+
+        const fullName = [profileFirstName, profileLastName].filter(Boolean).join(' ').trim() || null;
+        const updates = {
+            id: user.id,
+            email: user.email,
+            full_name: fullName,
+            nickname: profileNickname || null,
+            country: profileCountry || null,
+            phone: profilePhone || null,
+            updated_at: new Date().toISOString(),
+        };
+
+        const { error } = await supabase.from('profiles').upsert(updates);
+
+        if (error) {
+            setProfileMessage(error.message);
+            return;
+        }
+
+        setProfile(updates);
+        setProfileMessage('Profilo aggiornato con successo.');
+    }
+
     function changeMonth(direction) {
-        setCurrentDate(prevDate => {
+        setCurrentDate((prevDate) => {
             const nextDate = new Date(prevDate);
             nextDate.setDate(1);
             nextDate.setMonth(nextDate.getMonth() + direction);
@@ -157,9 +348,9 @@ function App() {
     }
 
     function toggleFilterValue(filterKey, value) {
-        setSelectedFilters(prevFilters => {
+        setSelectedFilters((prevFilters) => {
             const nextValues = prevFilters[filterKey].includes(value)
-                ? prevFilters[filterKey].filter(item => item !== value)
+                ? prevFilters[filterKey].filter((item) => item !== value)
                 : [...prevFilters[filterKey], value];
 
             return {
@@ -171,7 +362,7 @@ function App() {
     }
 
     function clearFilter(filterKey) {
-        setSelectedFilters(prevFilters => ({
+        setSelectedFilters((prevFilters) => ({
             ...prevFilters,
             [filterKey]: [],
         }));
@@ -179,7 +370,7 @@ function App() {
     }
 
     function getEventsForDate(dateStr) {
-        return filteredEvents.filter(event => event.date === dateStr);
+        return filteredEvents.filter((event) => event.date === dateStr);
     }
 
     const today = formatDate(new Date());
@@ -211,7 +402,7 @@ function App() {
             const date = new Date(year, month, day);
             const dateStr = formatDate(date);
             const dayEvents = getEventsForDate(dateStr);
-            const uniqueCircuits = [...new Set(dayEvents.map(event => event.circuit))];
+            const uniqueCircuits = [...new Set(dayEvents.map((event) => event.circuit))];
 
             days.push({
                 key: dateStr,
@@ -221,7 +412,7 @@ function App() {
                 isToday: dateStr === today,
                 isSelected: selectedDate === dateStr,
                 titleText: dayEvents.length > 0
-                    ? dayEvents.map(event => `${event.title} - ${event.circuit}`).join(' | ')
+                    ? dayEvents.map((event) => `${event.title} - ${event.circuit}`).join(' | ')
                     : '',
                 circuits: uniqueCircuits,
                 eventCount: dayEvents.length,
@@ -243,138 +434,82 @@ function App() {
     const selectedDateEvents = selectedDate ? getEventsForDate(selectedDate) : [];
     const eventsTitle = selectedDate ? `Eventi - ${formatDateItalian(selectedDate)}` : 'Eventi';
 
+    if (!user || authView === 'resetPassword') {
+        return (
+            <AuthPage
+                authView={authView}
+                setAuthView={setAuthView}
+                authEmail={authEmail}
+                setAuthEmail={setAuthEmail}
+                authPassword={authPassword}
+                setAuthPassword={setAuthPassword}
+                authConfirmPassword={authConfirmPassword}
+                setAuthConfirmPassword={setAuthConfirmPassword}
+                authFirstName={authFirstName}
+                setAuthFirstName={setAuthFirstName}
+                authLastName={authLastName}
+                setAuthLastName={setAuthLastName}
+                authError={authError}
+                authMessage={authMessage}
+                authLoading={authLoading}
+                authResetSuccess={authResetSuccess}
+                handleLogin={handleLogin}
+                handleSignup={handleSignup}
+                handlePasswordReset={handlePasswordReset}
+                handleCompletePasswordReset={handleCompletePasswordReset}
+            />
+        );
+    }
+
     return (
         <div className="container">
-            <header>
-                <h1>Trackly</h1>
-                <p className="subtitle">Calendario Trackday Moto</p>
-            </header>
-
-            <main>
-                <div className="filters">
-                    <MultiSelect
-                        label="Seleziona circuiti"
-                        defaultLabel="Tutti i circuiti"
-                        values={circuits}
-                        selectedValues={selectedFilters.circuits}
-                        isOpen={openMenu === 'circuits'}
-                        onToggle={() => setOpenMenu(openMenu === 'circuits' ? null : 'circuits')}
-                        onChange={(value) => toggleFilterValue('circuits', value)}
-                        onClear={() => clearFilter('circuits')}
-                        menuRef={circuitMenuRef}
-                        controlsId="filterCircuitOptions"
-                    />
-                    <MultiSelect
-                        label="Seleziona organizzatori"
-                        defaultLabel="Tutti gli organizzatori"
-                        values={organizers}
-                        selectedValues={selectedFilters.organizers}
-                        isOpen={openMenu === 'organizers'}
-                        onToggle={() => setOpenMenu(openMenu === 'organizers' ? null : 'organizers')}
-                        onChange={(value) => toggleFilterValue('organizers', value)}
-                        onClear={() => clearFilter('organizers')}
-                        menuRef={organizerMenuRef}
-                        controlsId="filterOrganizerOptions"
-                    />
-                </div>
-
-                <div className="controls">
-                    <button className="btn btn-prev" type="button" aria-label="Mese precedente" onClick={() => changeMonth(-1)}>
-                        &#8249;
-                    </button>
-                    <h2>{currentMonthLabel}</h2>
-                    <button className="btn btn-next" type="button" aria-label="Mese successivo" onClick={() => changeMonth(1)}>
-                        &#8250;
-                    </button>
-                </div>
-
-                <div className="calendar-wrapper" ref={calendarWrapperRef}>
-                    <div className="calendar">
-                        {weekdayLabels.map(label => (
-                            <div className="weekday" key={label}>{label}</div>
-                        ))}
-                        <div id="calendarDays">
-                            {calendarDays.map(day => {
-                                if (day.type === 'other-month') {
-                                    return <div className="day other-month" key={day.key}>{day.label}</div>;
-                                }
-
-                                const classes = [
-                                    'day',
-                                    day.isToday ? 'today' : '',
-                                    day.isSelected ? 'selected' : '',
-                                    day.eventCount > 0 ? 'has-event' : '',
-                                ].filter(Boolean).join(' ');
-
-                                return (
-                                    <div
-                                        className={classes}
-                                        data-date={day.dateStr}
-                                        key={day.key}
-                                        title={day.titleText}
-                                        onClick={() => setSelectedDate(day.dateStr)}
-                                    >
-                                        <span className="day-number">{day.label}</span>
-                                        {day.eventCount > 0 && (
-                                            <>
-                                                <div className="day-organizer-list">
-                                                    {day.circuits.map(circuit => (
-                                                        <span className="day-organizer-item" key={circuit}>{circuit}</span>
-                                                    ))}
-                                                </div>
-                                                <span className="day-event-count">{day.eventCount}</span>
-                                            </>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="events-section">
-                    <h3 id="eventsTitle">{eventsTitle}</h3>
-                    <div className="events-list">
-                        {!selectedDate && <p className="no-events">Nessun evento selezionato</p>}
-                        {selectedDate && selectedDateEvents.length === 0 && (
-                            <p className="no-events">Nessun evento per questa data</p>
-                        )}
-                        {selectedDateEvents.map(event => {
-                            const organizerUrl = organizerLinks[event.organizer];
-
-                            return (
-                                <div className="event-card" key={`${event.date}-${event.organizer}-${event.title}-${event.circuit}`}>
-                                    <div className="event-date">{formatDateItalian(event.date)}</div>
-                                    <div className="event-title">{event.title}</div>
-                                    <div className="event-bottom-row">
-                                        <div className="event-details">
-                                            <div className="event-detail">
-                                                <strong>Circuito:</strong>
-                                                <span>{event.circuit}</span>
-                                            </div>
-                                            <div className="event-detail">
-                                                <strong>Organizzatore:</strong>
-                                                <span>{event.organizer}</span>
-                                            </div>
-                                        </div>
-                                        {organizerUrl && (
-                                            <a
-                                                className="organizer-link-btn"
-                                                href={organizerUrl}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                            >
-                                                Verifica disponibilita, prezzi e prenota
-                                            </a>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            </main>
-
+            <AppHeader
+                profile={profile}
+                user={user}
+                profileMenuOpen={profileMenuOpen}
+                setProfileMenuOpen={setProfileMenuOpen}
+                handleLogout={handleLogout}
+                setActivePage={setActivePage}
+                profileAvatarRef={profileAvatarRef}
+                profileMenuRef={profileMenuRef}
+            />
+            {activePage === 'profile' ? (
+                <ProfilePage
+                    profile={profile}
+                    profileFirstName={profileFirstName}
+                    setProfileFirstName={setProfileFirstName}
+                    profileLastName={profileLastName}
+                    setProfileLastName={setProfileLastName}
+                    profileNickname={profileNickname}
+                    setProfileNickname={setProfileNickname}
+                    profileCountry={profileCountry}
+                    setProfileCountry={setProfileCountry}
+                    profilePhone={profilePhone}
+                    setProfilePhone={setProfilePhone}
+                    profileMessage={profileMessage}
+                    handleProfileSave={handleProfileSave}
+                />
+            ) : (
+                <CalendarPage
+                    circuits={circuits}
+                    organizers={organizers}
+                    selectedFilters={selectedFilters}
+                    openMenu={openMenu}
+                    setOpenMenu={setOpenMenu}
+                    toggleFilterValue={toggleFilterValue}
+                    clearFilter={clearFilter}
+                    currentMonthLabel={currentMonthLabel}
+                    changeMonth={changeMonth}
+                    calendarDays={calendarDays}
+                    selectedDate={selectedDate}
+                    setSelectedDate={setSelectedDate}
+                    selectedDateEvents={selectedDateEvents}
+                    eventsTitle={eventsTitle}
+                    organizerLinks={organizerLinks}
+                    circuitMenuRef={circuitMenuRef}
+                    organizerMenuRef={organizerMenuRef}
+                />
+            )}
             <footer>
                 <p>&copy; 2026 Trackly - Calendario Eventi</p>
             </footer>
