@@ -1,11 +1,21 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from './lib/supabaseClient.js';
 import { fetchEvents } from './lib/events.js';
 import AppHeader from './components/AppHeader.jsx';
 import AuthPage from './components/AuthPage.jsx';
 import ProfilePage from './components/ProfilePage.jsx';
+import TrackLogPage from './components/TrackLogPage.jsx';
+import TrackHistoryPage from './components/TrackHistoryPage.jsx';
+import TrackDayDetailsPage from './components/TrackDayDetailsPage.jsx';
 import CalendarPage from './components/CalendarPage.jsx';
-import { formatDate, formatDateItalian, monthNames } from './lib/utils.js';
+import { formatDate, formatDateItalian, formatLapTime, monthNames, parseLapTime } from './lib/utils.js';
+
+const validPages = ['calendar', 'auth', 'profile', 'tracklog', 'trackhistory', 'trackdaydetails'];
+
+function getPageFromHash() {
+    const hash = window.location.hash.replace('#', '');
+    return validPages.includes(hash) ? hash : 'calendar';
+}
 
 const organizerLinks = {
     Motorace: 'https://www.motoracepeople.com/about',
@@ -17,6 +27,26 @@ const organizerLinks = {
 function App() {
     const initialDate = new Date();
     initialDate.setDate(1);
+
+    function createEmptyTrackSessions() {
+        return Array.from({ length: 6 }, (_, index) => ({
+            turn: index + 1,
+            tyre_front: '',
+            tyre_rear: '',
+            pressure_front: '',
+            pressure_rear: '',
+            fork_compression: '',
+            fork_rebound: '',
+            fork_preload: '',
+            mono_compression: '',
+            mono_rebound: '',
+            mono_preload: '',
+            gearing: '',
+            fuel_load: '',
+            lap_time: '',
+            notes: '',
+        }));
+    }
 
     const [user, setUser] = useState(null);
     const [authView, setAuthView] = useState('login');
@@ -38,10 +68,33 @@ function App() {
     const [profilePhone, setProfilePhone] = useState('');
     const [profileMessage, setProfileMessage] = useState('');
     const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-    const [activePage, setActivePage] = useState('calendar');
+    const [activePage, setActivePage] = useState(getPageFromHash);
+
+    const [bikes, setBikes] = useState([]);
+    const [bikeName, setBikeName] = useState('');
+    const [bikeManufacturer, setBikeManufacturer] = useState('');
+    const [bikeModel, setBikeModel] = useState('');
+    const [bikeYear, setBikeYear] = useState('');
+    const [bikeCategory, setBikeCategory] = useState('');
+    const [bikeNotes, setBikeNotes] = useState('');
+    const [bikeMessage, setBikeMessage] = useState('');
+
+    const [trackDays, setTrackDays] = useState([]);
+    const [selectedTrackDay, setSelectedTrackDay] = useState(null);
+    const [editingTrackDay, setEditingTrackDay] = useState(null);
+    const [trackDate, setTrackDate] = useState(formatDate(new Date()));
+    const [trackCircuitName, setTrackCircuitName] = useState('');
+    const [trackBikeId, setTrackBikeId] = useState('');
+    const [trackWeather, setTrackWeather] = useState('');
+    const [trackBestLapTime, setTrackBestLapTime] = useState('');
+    const [trackAverageLapTime, setTrackAverageLapTime] = useState('');
+    const [trackNotes, setTrackNotes] = useState('');
+    const [trackSessions, setTrackSessions] = useState(createEmptyTrackSessions());
+    const [trackMessage, setTrackMessage] = useState('');
+    const [currentTrackDayId, setCurrentTrackDayId] = useState(null);
 
     const [currentDate, setCurrentDate] = useState(initialDate);
-    const [selectedDate, setSelectedDate] = useState(null);
+    const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));
     const [selectedFilters, setSelectedFilters] = useState({
         circuits: [],
         organizers: [],
@@ -52,6 +105,27 @@ function App() {
     const circuitMenuRef = useRef(null);
     const organizerMenuRef = useRef(null);
     const profileAvatarRef = useRef(null);
+    const sessionLoadedRef = useRef(false);
+
+    const navigateTo = useCallback((page) => {
+        setActivePage(page);
+        window.history.pushState({ page }, '', `#${page}`);
+    }, []);
+
+    useEffect(() => {
+        // Set initial hash if not present
+        if (!window.location.hash) {
+            window.history.replaceState({ page: activePage }, '', `#${activePage}`);
+        }
+
+        function handlePopState(event) {
+            const page = event.state?.page || getPageFromHash();
+            setActivePage(page);
+        }
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, []);
     const profileMenuRef = useRef(null);
     const calendarWrapperRef = useRef(null);
 
@@ -239,6 +313,230 @@ function App() {
         setAuthError('');
         setAuthMessage('');
         setAuthResetSuccess(false);
+        setBikes([]);
+        setTrackDays([]);
+        setTrackSessions(createEmptyTrackSessions());
+        navigateTo('calendar');
+    }
+
+    async function handleBikeSave(event) {
+        event.preventDefault();
+        setBikeMessage('');
+
+        if (!bikeName.trim()) {
+            setBikeMessage('Inserisci almeno il nome della moto.');
+            return;
+        }
+
+        const { error } = await supabase.from('user_bikes').insert([
+            {
+                user_id: user.id,
+                name: bikeName.trim(),
+                manufacturer: bikeManufacturer.trim() || null,
+                model: bikeModel.trim() || null,
+                year: bikeYear ? Number(bikeYear) : null,
+                category: bikeCategory.trim() || null,
+                notes: bikeNotes.trim() || null,
+            },
+        ]);
+
+        if (error) {
+            setBikeMessage(error.message);
+            return;
+        }
+
+        setBikeMessage('Moto salvata correttamente.');
+        setBikeName('');
+        setBikeManufacturer('');
+        setBikeModel('');
+        setBikeYear('');
+        setBikeCategory('');
+        setBikeNotes('');
+        const { data } = await supabase
+            .from('user_bikes')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+        setBikes(data || []);
+    }
+
+    function handleTrackSessionChange(index, field, value) {
+        setTrackSessions((prevSessions) =>
+            prevSessions.map((session, sessionIndex) =>
+                sessionIndex === index ? { ...session, [field]: value } : session
+            )
+        );
+    }
+
+    async function saveTrackDayDetails() {
+        if (!trackDate || !trackCircuitName.trim() || !trackBikeId) {
+            setTrackMessage('Data, circuito e moto sono campi obbligatori.');
+            return null;
+        }
+
+        // Check for duplicate date (exclude current track day when editing)
+        const { data: existing } = await supabase
+            .from('track_days')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('date', trackDate)
+            .limit(1);
+
+        const isDuplicate = existing?.some((row) => row.id !== currentTrackDayId);
+        if (isDuplicate) {
+            setTrackMessage('Esiste già una giornata registrata per questa data.');
+            return null;
+        }
+
+        const selectedBike = bikes.find((bike) => bike.id === trackBikeId);
+        const dayPayload = {
+            user_id: user.id,
+            date: trackDate,
+            circuit_name: trackCircuitName.trim(),
+            bike_id: trackBikeId,
+            bike_name: selectedBike?.name || '',
+            weather: trackWeather.trim() || null,
+            best_lap_time: parseLapTime(trackBestLapTime),
+            average_lap_time: parseLapTime(trackAverageLapTime),
+            notes: trackNotes.trim() || null,
+        };
+
+        if (currentTrackDayId) {
+            const { error } = await supabase.from('track_days').update(dayPayload).eq('id', currentTrackDayId);
+            if (error) {
+                setTrackMessage(error.message);
+                return null;
+            }
+            return currentTrackDayId;
+        }
+
+        const { data: insertedDays, error: dayError } = await supabase
+            .from('track_days')
+            .insert([dayPayload])
+            .select('id');
+
+        if (dayError || !insertedDays || insertedDays.length === 0) {
+            setTrackMessage(dayError?.message || 'Errore salvataggio giornata.');
+            return null;
+        }
+
+        const newTrackDayId = insertedDays[0].id;
+        setCurrentTrackDayId(newTrackDayId);
+        return newTrackDayId;
+    }
+
+    function turnHasData(session) {
+        return (
+            !!session.tyre_front ||
+            !!session.tyre_rear ||
+            !!session.pressure_front ||
+            !!session.pressure_rear ||
+            !!session.fork_compression ||
+            !!session.fork_rebound ||
+            !!session.fork_preload ||
+            !!session.mono_compression ||
+            !!session.mono_rebound ||
+            !!session.mono_preload ||
+            !!session.gearing ||
+            !!session.fuel_load ||
+            !!session.lap_time ||
+            !!session.notes
+        );
+    }
+
+    async function saveTrackTurn(index, session) {
+        if (!session) return null;
+        if (!turnHasData(session)) {
+            return true;
+        }
+
+        const trackDayId = currentTrackDayId || (await saveTrackDayDetails());
+        if (!trackDayId) return null;
+
+        const turnPayload = {
+            track_day_id: trackDayId,
+            turn_number: session.turn,
+            tyre_front: session.tyre_front || null,
+            tyre_rear: session.tyre_rear || null,
+            pressure_front: session.pressure_front || null,
+            pressure_rear: session.pressure_rear || null,
+            fork_compression: session.fork_compression || null,
+            fork_rebound: session.fork_rebound || null,
+            fork_preload: session.fork_preload || null,
+            mono_compression: session.mono_compression || null,
+            mono_rebound: session.mono_rebound || null,
+            mono_preload: session.mono_preload || null,
+            gearing: session.gearing || null,
+            fuel_load: session.fuel_load || null,
+            lap_time: parseLapTime(session.lap_time),
+            notes: session.notes || null,
+        };
+
+        const { error } = await supabase
+            .from('track_day_turns')
+            .upsert([turnPayload], { onConflict: 'track_day_id,turn_number' });
+
+        if (error) {
+            setTrackMessage(error.message);
+            return null;
+        }
+
+        return true;
+    }
+
+    async function handleTrackDaySave(event) {
+        event.preventDefault();
+        setTrackMessage('');
+
+        const trackDayId = await saveTrackDayDetails();
+        if (!trackDayId) {
+            return;
+        }
+
+        const turnsToInsert = trackSessions
+            .filter((session) => turnHasData(session))
+            .map((session) => ({
+                track_day_id: trackDayId,
+                turn_number: session.turn,
+                tyre_front: session.tyre_front || null,
+                tyre_rear: session.tyre_rear || null,
+                pressure_front: session.pressure_front || null,
+                pressure_rear: session.pressure_rear || null,
+                fork_compression: session.fork_compression || null,
+                fork_rebound: session.fork_rebound || null,
+                fork_preload: session.fork_preload || null,
+                mono_compression: session.mono_compression || null,
+                mono_rebound: session.mono_rebound || null,
+                mono_preload: session.mono_preload || null,
+                gearing: session.gearing || null,
+                fuel_load: session.fuel_load || null,
+                lap_time: parseLapTime(session.lap_time),
+                notes: session.notes || null,
+            }));
+
+        const { error: turnError } = await supabase
+            .from('track_day_turns')
+            .upsert(turnsToInsert, { onConflict: 'track_day_id,turn_number' });
+
+        if (turnError) {
+            setTrackMessage(turnError.message);
+            return;
+        }
+
+        setTrackMessage(editingTrackDay ? 'Giornata in pista aggiornata con successo.' : 'Giornata in pista registrata con successo.');
+        setCurrentTrackDayId(null);
+        setEditingTrackDay(null);
+        setTrackDate(formatDate(new Date()));
+        setTrackCircuitName('');
+        setTrackBikeId('');
+        setTrackWeather('');
+        setTrackBestLapTime('');
+        setTrackAverageLapTime('');
+        setTrackNotes('');
+        setTrackSessions(createEmptyTrackSessions());
+
+        await loadTrackDays();
+        navigateTo('trackhistory');
     }
 
     useEffect(() => {
@@ -249,10 +547,14 @@ function App() {
             setUser(session?.user ?? null);
         }
 
-        getSession();
+        getSession().then(() => { sessionLoadedRef.current = true; });
 
-        const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null);
+        const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+            const newUser = session?.user ?? null;
+            setUser(newUser);
+            if (newUser && event === 'SIGNED_IN' && !sessionLoadedRef.current) {
+                navigateTo('calendar');
+            }
         });
 
         return () => {
@@ -300,8 +602,12 @@ function App() {
     useEffect(() => {
         if (!user) {
             setProfile(null);
-            setActivePage('calendar');
+            if (sessionLoadedRef.current) {
+                navigateTo('calendar');
+            }
             setProfileMenuOpen(false);
+            setBikes([]);
+            setTrackDays([]);
             return;
         }
 
@@ -332,8 +638,101 @@ function App() {
             setProfileMenuOpen(false);
         }
 
-        loadProfile();
+        async function loadUserBikes() {
+            const { data, error } = await supabase
+                .from('user_bikes')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error('Bike fetch error', error);
+                setBikes([]);
+                return;
+            }
+
+            setBikes(data || []);
+        }
+
+        async function loadUserData() {
+            if (!user) return;
+            await loadProfile();
+            await loadUserBikes();
+            await loadTrackDays();
+        }
+
+        loadUserData();
     }, [user]);
+
+    async function loadTrackDays() {
+        if (!user) return;
+
+        const { data, error } = await supabase
+            .from('track_days')
+            .select('*, track_day_turns(*)')
+            .eq('user_id', user.id)
+            .order('date', { ascending: false });
+
+        if (error) {
+            console.error('Track day fetch error', error);
+            setTrackDays([]);
+            return;
+        }
+
+        setTrackDays(data || []);
+    }
+
+    async function handleDeleteTrackDay(dayId) {
+        const { error } = await supabase
+            .from('track_days')
+            .delete()
+            .eq('id', dayId);
+
+        if (error) {
+            console.error('Errore eliminazione giornata', error);
+            return;
+        }
+
+        await loadTrackDays();
+    }
+
+    function populateTrackFieldsFromDay(day) {
+        setTrackDate(day.date);
+        setTrackCircuitName(day.circuit_name);
+        setTrackBikeId(day.bike_id);
+        setTrackWeather(day.weather || '');
+        setTrackBestLapTime(day.best_lap_time ? formatLapTime(day.best_lap_time) : '');
+        setTrackAverageLapTime(day.average_lap_time ? formatLapTime(day.average_lap_time) : '');
+        setTrackNotes(day.notes || '');
+        setCurrentTrackDayId(day.id);
+
+        // Populate turns
+        const turns = day.track_day_turns || [];
+        const populatedSessions = createEmptyTrackSessions().map((session, index) => {
+            const turn = turns.find(t => t.turn_number === session.turn);
+            if (turn) {
+                return {
+                    ...session,
+                    tyre_front: turn.tyre_front || '',
+                    tyre_rear: turn.tyre_rear || '',
+                    pressure_front: turn.pressure_front || '',
+                    pressure_rear: turn.pressure_rear || '',
+                    fork_compression: turn.fork_compression || '',
+                    fork_rebound: turn.fork_rebound || '',
+                    fork_preload: turn.fork_preload || '',
+                    mono_compression: turn.mono_compression || '',
+                    mono_rebound: turn.mono_rebound || '',
+                    mono_preload: turn.mono_preload || '',
+                    gearing: turn.gearing || '',
+                    fuel_load: turn.fuel_load || '',
+                    lap_time: turn.lap_time ? formatLapTime(turn.lap_time) : '',
+                    notes: turn.notes || '',
+                };
+            }
+            return session;
+        });
+        setTrackSessions(populatedSessions);
+    }
 
     async function handleProfileSave(event) {
         event.preventDefault();
@@ -458,31 +857,19 @@ function App() {
     const selectedDateEvents = selectedDate ? getEventsForDate(selectedDate) : [];
     const eventsTitle = selectedDate ? `Eventi - ${formatDateItalian(selectedDate)}` : 'Eventi';
 
-    if (!user || authView === 'resetPassword') {
-        return (
-            <AuthPage
-                authView={authView}
-                setAuthView={setAuthView}
-                authEmail={authEmail}
-                setAuthEmail={setAuthEmail}
-                authPassword={authPassword}
-                setAuthPassword={setAuthPassword}
-                authConfirmPassword={authConfirmPassword}
-                setAuthConfirmPassword={setAuthConfirmPassword}
-                authFirstName={authFirstName}
-                setAuthFirstName={setAuthFirstName}
-                authLastName={authLastName}
-                setAuthLastName={setAuthLastName}
-                authError={authError}
-                authMessage={authMessage}
-                authLoading={authLoading}
-                authResetSuccess={authResetSuccess}
-                handleLogin={handleLogin}
-                handleSignup={handleSignup}
-                handlePasswordReset={handlePasswordReset}
-                handleCompletePasswordReset={handleCompletePasswordReset}
-            />
-        );
+    function handleNewTrackDay() {
+        setTrackMessage('');
+        setCurrentTrackDayId(null);
+        setEditingTrackDay(null);
+        setTrackDate(formatDate(new Date()));
+        setTrackCircuitName('');
+        setTrackBikeId('');
+        setTrackWeather('');
+        setTrackBestLapTime('');
+        setTrackAverageLapTime('');
+        setTrackNotes('');
+        setTrackSessions(createEmptyTrackSessions());
+        navigateTo('tracklog');
     }
 
     return (
@@ -493,11 +880,38 @@ function App() {
                 profileMenuOpen={profileMenuOpen}
                 setProfileMenuOpen={setProfileMenuOpen}
                 handleLogout={handleLogout}
-                setActivePage={setActivePage}
+                navigateTo={navigateTo}
+                onNewTrackDay={handleNewTrackDay}
                 profileAvatarRef={profileAvatarRef}
                 profileMenuRef={profileMenuRef}
+                setAuthView={setAuthView}
             />
-            {activePage === 'profile' ? (
+            {!user && activePage === 'auth' ? (
+                <section className="auth-page-wrapper">
+                    <AuthPage
+                        authView={authView}
+                        setAuthView={setAuthView}
+                        authEmail={authEmail}
+                        setAuthEmail={setAuthEmail}
+                        authPassword={authPassword}
+                        setAuthPassword={setAuthPassword}
+                        authConfirmPassword={authConfirmPassword}
+                        setAuthConfirmPassword={setAuthConfirmPassword}
+                        authFirstName={authFirstName}
+                        setAuthFirstName={setAuthFirstName}
+                        authLastName={authLastName}
+                        setAuthLastName={setAuthLastName}
+                        authError={authError}
+                        authMessage={authMessage}
+                        authLoading={authLoading}
+                        authResetSuccess={authResetSuccess}
+                        handleLogin={handleLogin}
+                        handleSignup={handleSignup}
+                        handlePasswordReset={handlePasswordReset}
+                        handleCompletePasswordReset={handleCompletePasswordReset}
+                    />
+                </section>
+            ) : user && activePage === 'profile' ? (
                 <ProfilePage
                     profile={profile}
                     profileFirstName={profileFirstName}
@@ -511,7 +925,63 @@ function App() {
                     profilePhone={profilePhone}
                     setProfilePhone={setProfilePhone}
                     profileMessage={profileMessage}
+                    bikes={bikes}
+                    bikeName={bikeName}
+                    setBikeName={setBikeName}
+                    bikeManufacturer={bikeManufacturer}
+                    setBikeManufacturer={setBikeManufacturer}
+                    bikeModel={bikeModel}
+                    setBikeModel={setBikeModel}
+                    bikeYear={bikeYear}
+                    setBikeYear={setBikeYear}
+                    bikeCategory={bikeCategory}
+                    setBikeCategory={setBikeCategory}
+                    bikeNotes={bikeNotes}
+                    setBikeNotes={setBikeNotes}
+                    bikeMessage={bikeMessage}
                     handleProfileSave={handleProfileSave}
+                    handleBikeSave={handleBikeSave}
+                />
+            ) : user && activePage === 'tracklog' ? (
+                <TrackLogPage
+                    bikes={bikes}
+                    circuits={circuits}
+                    trackDate={trackDate}
+                    setTrackDate={setTrackDate}
+                    trackCircuitName={trackCircuitName}
+                    setTrackCircuitName={setTrackCircuitName}
+                    trackBikeId={trackBikeId}
+                    setTrackBikeId={setTrackBikeId}
+                    trackWeather={trackWeather}
+                    setTrackWeather={setTrackWeather}
+                    trackSessions={trackSessions}
+                    onTrackSessionChange={handleTrackSessionChange}
+                    trackBestLapTime={trackBestLapTime}
+                    setTrackBestLapTime={setTrackBestLapTime}
+                    trackAverageLapTime={trackAverageLapTime}
+                    setTrackAverageLapTime={setTrackAverageLapTime}
+                    trackNotes={trackNotes}
+                    setTrackNotes={setTrackNotes}
+                    trackMessage={trackMessage}
+                    isEditing={!!editingTrackDay}
+                    handleTrackDaySave={handleTrackDaySave}
+                    saveTrackDayDetails={saveTrackDayDetails}
+                    saveTrackTurn={saveTrackTurn}
+                />
+            ) : user && activePage === 'trackhistory' ? (
+                <TrackHistoryPage
+                    trackDays={trackDays}
+                    onSelectTrackDay={(day) => {
+                        setEditingTrackDay(day);
+                        populateTrackFieldsFromDay(day);
+                        navigateTo('tracklog');
+                    }}
+                    onDeleteTrackDay={handleDeleteTrackDay}
+                />
+            ) : user && activePage === 'trackdaydetails' ? (
+                <TrackDayDetailsPage
+                    trackDay={selectedTrackDay}
+                    onBack={() => navigateTo('trackhistory')}
                 />
             ) : (
                 <CalendarPage
