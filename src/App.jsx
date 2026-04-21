@@ -4,13 +4,14 @@ import { fetchEvents } from './lib/events.js';
 import AppHeader from './components/AppHeader.jsx';
 import AuthPage from './components/AuthPage.jsx';
 import ProfilePage from './components/ProfilePage.jsx';
+import BikesPage from './components/BikesPage.jsx';
 import TrackLogPage from './components/TrackLogPage.jsx';
 import TrackHistoryPage from './components/TrackHistoryPage.jsx';
 import TrackDayDetailsPage from './components/TrackDayDetailsPage.jsx';
 import CalendarPage from './components/CalendarPage.jsx';
 import { formatDate, formatDateItalian, formatLapTime, monthNames, parseLapTime } from './lib/utils.js';
 
-const validPages = ['calendar', 'auth', 'profile', 'tracklog', 'trackhistory', 'trackdaydetails'];
+const validPages = ['calendar', 'auth', 'profile', 'bikes', 'tracklog', 'trackhistory', 'trackdaydetails'];
 
 function getPageFromHash() {
     const hash = window.location.hash.replace('#', '');
@@ -77,7 +78,12 @@ function App() {
     const [bikeYear, setBikeYear] = useState('');
     const [bikeCategory, setBikeCategory] = useState('');
     const [bikeNotes, setBikeNotes] = useState('');
+    const [bikeFrontTyreKm, setBikeFrontTyreKm] = useState('');
+    const [bikeRearTyreKm, setBikeRearTyreKm] = useState('');
+    const [bikeOilKm, setBikeOilKm] = useState('');
+    const [bikeBrakePadsKm, setBikeBrakePadsKm] = useState('');
     const [bikeMessage, setBikeMessage] = useState('');
+    const [editingBikeId, setEditingBikeId] = useState(null);
 
     const [trackDays, setTrackDays] = useState([]);
     const [selectedTrackDay, setSelectedTrackDay] = useState(null);
@@ -325,39 +331,73 @@ function App() {
 
         if (!bikeName.trim()) {
             setBikeMessage('Inserisci almeno il nome della moto.');
-            return;
+            return false;
         }
 
-        const { error } = await supabase.from('user_bikes').insert([
-            {
-                user_id: user.id,
-                name: bikeName.trim(),
-                manufacturer: bikeManufacturer.trim() || null,
-                model: bikeModel.trim() || null,
-                year: bikeYear ? Number(bikeYear) : null,
-                category: bikeCategory.trim() || null,
-                notes: bikeNotes.trim() || null,
-            },
-        ]);
+        const bikePayload = {
+            user_id: user.id,
+            name: bikeName.trim(),
+            manufacturer: bikeManufacturer.trim() || null,
+            model: bikeModel.trim() || null,
+            year: bikeYear ? Number(bikeYear) : null,
+            category: bikeCategory.trim() || null,
+            notes: bikeNotes.trim() || null,
+            front_tyre_km: bikeFrontTyreKm ? Number(bikeFrontTyreKm) : null,
+            rear_tyre_km: bikeRearTyreKm ? Number(bikeRearTyreKm) : null,
+            oil_km: bikeOilKm ? Number(bikeOilKm) : null,
+            brake_pads_km: bikeBrakePadsKm ? Number(bikeBrakePadsKm) : null,
+        };
+
+        let error;
+        if (editingBikeId) {
+            ({ error } = await supabase.from('user_bikes').update(bikePayload).eq('id', editingBikeId));
+        } else {
+            ({ error } = await supabase.from('user_bikes').insert([bikePayload]));
+        }
 
         if (error) {
             setBikeMessage(error.message);
-            return;
+            return false;
         }
 
-        setBikeMessage('Moto salvata correttamente.');
-        setBikeName('');
-        setBikeManufacturer('');
-        setBikeModel('');
-        setBikeYear('');
-        setBikeCategory('');
-        setBikeNotes('');
+        setBikeMessage(editingBikeId ? 'Moto aggiornata correttamente.' : 'Moto salvata correttamente.');
+        clearBikeForm();
         const { data } = await supabase
             .from('user_bikes')
             .select('*')
             .eq('user_id', user.id)
             .order('created_at', { ascending: false });
         setBikes(data || []);
+    }
+
+    function clearBikeForm() {
+        setEditingBikeId(null);
+        setBikeName('');
+        setBikeManufacturer('');
+        setBikeModel('');
+        setBikeYear('');
+        setBikeCategory('');
+        setBikeNotes('');
+        setBikeFrontTyreKm('');
+        setBikeRearTyreKm('');
+        setBikeOilKm('');
+        setBikeBrakePadsKm('');
+        setBikeMessage('');
+    }
+
+    function handleEditBike(bike) {
+        setEditingBikeId(bike.id);
+        setBikeName(bike.name || '');
+        setBikeManufacturer(bike.manufacturer || '');
+        setBikeModel(bike.model || '');
+        setBikeYear(bike.year ? String(bike.year) : '');
+        setBikeCategory(bike.category || '');
+        setBikeNotes(bike.notes || '');
+        setBikeFrontTyreKm(bike.front_tyre_km ? String(bike.front_tyre_km) : '');
+        setBikeRearTyreKm(bike.rear_tyre_km ? String(bike.rear_tyre_km) : '');
+        setBikeOilKm(bike.oil_km ? String(bike.oil_km) : '');
+        setBikeBrakePadsKm(bike.brake_pads_km ? String(bike.brake_pads_km) : '');
+        setBikeMessage('');
     }
 
     function handleTrackSessionChange(index, field, value) {
@@ -877,6 +917,7 @@ function App() {
             <AppHeader
                 profile={profile}
                 user={user}
+                activePage={activePage}
                 profileMenuOpen={profileMenuOpen}
                 setProfileMenuOpen={setProfileMenuOpen}
                 handleLogout={handleLogout}
@@ -925,6 +966,10 @@ function App() {
                     profilePhone={profilePhone}
                     setProfilePhone={setProfilePhone}
                     profileMessage={profileMessage}
+                    handleProfileSave={handleProfileSave}
+                />
+            ) : user && activePage === 'bikes' ? (
+                <BikesPage
                     bikes={bikes}
                     bikeName={bikeName}
                     setBikeName={setBikeName}
@@ -938,9 +983,19 @@ function App() {
                     setBikeCategory={setBikeCategory}
                     bikeNotes={bikeNotes}
                     setBikeNotes={setBikeNotes}
+                    bikeFrontTyreKm={bikeFrontTyreKm}
+                    setBikeFrontTyreKm={setBikeFrontTyreKm}
+                    bikeRearTyreKm={bikeRearTyreKm}
+                    setBikeRearTyreKm={setBikeRearTyreKm}
+                    bikeOilKm={bikeOilKm}
+                    setBikeOilKm={setBikeOilKm}
+                    bikeBrakePadsKm={bikeBrakePadsKm}
+                    setBikeBrakePadsKm={setBikeBrakePadsKm}
                     bikeMessage={bikeMessage}
-                    handleProfileSave={handleProfileSave}
                     handleBikeSave={handleBikeSave}
+                    editingBikeId={editingBikeId}
+                    onEditBike={handleEditBike}
+                    onCancelEditBike={clearBikeForm}
                 />
             ) : user && activePage === 'tracklog' ? (
                 <TrackLogPage

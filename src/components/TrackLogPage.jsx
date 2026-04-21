@@ -213,7 +213,7 @@ function TrackLogPage({
                                         >
                                             ←
                                         </button>
-                                        <span className="track-turn-label">Turno {activeTurn} / {totalTurns}</span>
+                                        <span key={activeTurn} className="track-turn-label">Turno {activeTurn} / {totalTurns}</span>
                                         <button
                                             type="button"
                                             className="track-turn-nav-btn"
@@ -246,6 +246,7 @@ function TrackLogPage({
                                     </div>
                                 </div>
 
+                                <div key={activeTurn} className="track-session-content">
                                 <div className="track-category-block">
                                     <div className="track-category-title">Gomme</div>
                                     
@@ -541,6 +542,7 @@ function TrackLogPage({
                                             />
                                         </label>
                                     </div>
+                                </div>
                                 </div>
                             </div>
 

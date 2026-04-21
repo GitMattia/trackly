@@ -45,8 +45,7 @@ header {
     background: linear-gradient(90deg, #ffffff 0%, #f6f7f9 100%);
     border-radius: 12px;
     position: relative;
-    overflow: visible;
-    max-height: 240px;
+    overflow: hidden;
     transition: box-shadow 0.28s ease;
     box-shadow: 0 10px 24px rgba(17, 19, 24, 0.08);
 }
@@ -914,11 +913,34 @@ main {
     .track-turn-label {
         font-weight: 700;
         color: var(--accent-color);
+        display: inline-block;
+        animation: turnLabelPop 0.4s ease;
     }
 
     .track-turn-actions {
         display: flex;
         gap: 8px;
+    }
+
+    @keyframes turnSlideIn {
+        from {
+            opacity: 0;
+            transform: translateX(28px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    @keyframes turnLabelPop {
+        0%   { transform: scale(1);    color: var(--accent-color); }
+        35%  { transform: scale(1.3);  color: var(--primary-color); }
+        100% { transform: scale(1);    color: var(--accent-color); }
+    }
+
+    .track-session-content {
+        animation: turnSlideIn 0.28s ease;
     }
 
     .track-session-header p {
@@ -1013,9 +1035,9 @@ main {
 
     .profile-menu {
         position: absolute;
-        top: 78px;
+        top: 0;
         right: 24px;
-        min-width: 180px;
+        min-width: 160px;
         background: white;
         border: 1px solid var(--border-color);
         border-radius: 16px;
@@ -1024,7 +1046,7 @@ main {
         visibility: hidden;
         transform: translateY(-10px);
         transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
-        z-index: 10;
+        z-index: 100;
     }
 
     .profile-menu.open {
@@ -1093,6 +1115,90 @@ main {
         z-index: 4;
     }
 
+    /* Main navigation bar */
+    .main-nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 16px 16px 0;
+        padding: 10px 16px;
+        border-top: 1px solid rgba(215, 219, 227, 0.5);
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 10px;
+        position: relative;
+        z-index: 5;
+    }
+
+    .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .nav-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 14px;
+        border: none;
+        background: transparent;
+        color: var(--text-light);
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        border-radius: 10px;
+        transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .nav-item:hover {
+        background: var(--background-light);
+        color: var(--text-dark);
+    }
+
+    .nav-item-active {
+        background: #fff3f5;
+        color: var(--primary-color);
+    }
+
+    .nav-item-active:hover {
+        background: #fff3f5;
+        color: var(--primary-color);
+    }
+
+    .nav-item-cta {
+        background: var(--accent-color);
+        color: white;
+    }
+
+    .nav-item-cta:hover {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .nav-icon {
+        font-size: 1.05rem;
+        line-height: 1;
+    }
+
+    .nav-account {
+        position: relative;
+        overflow: visible;
+    }
+
+    /* Hamburger - hidden on desktop */
+    .hamburger-btn {
+        display: none;
+    }
+
+    /* Mobile menu - hidden on desktop */
+    .mobile-menu {
+        display: none;
+    }
+
+    .profile-menu-logout {
+        color: var(--primary-color);
+    }
+
     .auth-logout {
         padding: 8px 14px;
         background: #f4f5f7;
@@ -1135,6 +1241,55 @@ main {
     font-style: italic;
 }
 
+.bike-notes {
+    margin-top: 10px;
+    color: var(--text-light);
+    font-size: 0.93rem;
+    font-style: italic;
+}
+
+.bike-card {
+    position: relative;
+}
+
+.bike-edit-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+}
+
+.bike-form-actions {
+    flex-direction: row !important;
+    justify-content: flex-start;
+}
+
+.bike-form-actions .btn {
+    width: auto !important;
+}
+
+@media (max-width: 600px) {
+    .bike-form-actions {
+        flex-direction: row !important;
+    }
+
+    .bike-form-actions .btn {
+        flex: 1 !important;
+        width: auto !important;
+    }
+
+    .bike-add-btn {
+        width: 100%;
+    }
+}
+
+.bike-form-section {
+    margin-top: 32px;
+}
+
+.bike-add-btn {
+    width: auto;
+}
+
 footer {
     text-align: center;
     padding: 20px 0;
@@ -1169,6 +1324,146 @@ footer {
         margin-top: 16px;
         width: 100%;
         z-index: 4;
+    }
+
+    .main-nav {
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+        margin: 12px 16px 0;
+        padding: 0;
+        border-top: none;
+        background: transparent;
+    }
+
+    .nav-links {
+        display: none;
+    }
+
+    .nav-account-desktop {
+        display: none;
+    }
+
+    .hamburger-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        width: 42px;
+        height: 42px;
+        cursor: pointer;
+        position: relative;
+        z-index: 6;
+    }
+
+    .hamburger-icon {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 5px;
+        width: 22px;
+        height: 18px;
+    }
+
+    .hamburger-icon span {
+        display: block;
+        width: 100%;
+        height: 2.5px;
+        background: var(--accent-color);
+        border-radius: 2px;
+        transition: transform 0.25s ease, opacity 0.2s ease;
+        transform-origin: center;
+    }
+
+    .hamburger-icon.hamburger-open span:nth-child(1) {
+        transform: translateY(7.5px) rotate(45deg);
+    }
+
+    .hamburger-icon.hamburger-open span:nth-child(2) {
+        opacity: 0;
+    }
+
+    .hamburger-icon.hamburger-open span:nth-child(3) {
+        transform: translateY(-7.5px) rotate(-45deg);
+    }
+
+    .mobile-menu {
+        display: flex;
+        flex-direction: column;
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        box-shadow: 0 16px 36px rgba(17, 19, 24, 0.12);
+        overflow: hidden;
+        max-height: 0;
+        opacity: 0;
+        transition: max-height 0.3s ease, opacity 0.25s ease, margin 0.3s ease;
+        margin: 0 0 0;
+    }
+
+    .mobile-menu-open {
+        max-height: 400px;
+        opacity: 1;
+        margin: 12px 0 20px;
+    }
+
+    .mobile-menu-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 14px 20px;
+        border: none;
+        background: transparent;
+        text-align: left;
+        color: var(--text-dark);
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: background 0.2s ease;
+    }
+
+    .mobile-menu-item:hover {
+        background: var(--background-light);
+    }
+
+    .mobile-menu-item-active {
+        color: var(--primary-color);
+        background: #fff3f5;
+    }
+
+    .mobile-menu-item-cta {
+        color: var(--accent-color);
+        font-weight: 700;
+    }
+
+    .mobile-menu-item-logout {
+        color: var(--primary-color);
+    }
+
+    .mobile-menu-divider {
+        border: none;
+        border-top: 1px solid var(--border-color);
+        margin: 4px 16px;
+    }
+
+    .nav-item {
+        padding: 8px 10px;
+        font-size: 0.82rem;
+    }
+
+    .nav-label {
+        display: inline;
+    }
+
+    .nav-account {
+        position: absolute;
+        top: 20px;
+        right: 20px;
     }
 
     .auth-card,
@@ -1517,6 +1812,13 @@ footer {
     font-style: italic;
 }
 
+/* Small Button */
+.btn-small {
+    padding: 8px 16px;
+    font-size: 0.88rem;
+    width: auto;
+}
+
 /* Edit Button */
 .edit-btn {
     background: var(--background-light);
@@ -1686,8 +1988,8 @@ footer {
     }
 
     .profile-menu {
-        right: 12px;
-        min-width: 160px;
+        right: 0;
+        min-width: 140px;
     }
 
     .controls h2 {
