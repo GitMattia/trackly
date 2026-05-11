@@ -23,6 +23,8 @@ const organizerLinks = {
     'Gully Racing': 'https://www.gullyracing.it/calendario',
     Promoracing: 'https://www.promoracing.it/it/calendario/moto',
     Rossocorsa: 'https://www.rossocorsaonline.com/prove',
+    'Prove Libere Moto': 'https://www.proveliberemoto.it/it/28-calendario',
+    'Portami In Pista': 'https://www.portamiinpista.it/Blog/trackdays',
 };
 
 function App() {

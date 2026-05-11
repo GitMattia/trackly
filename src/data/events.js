@@ -714,4 +714,322 @@ export const eventsData = [
         "circuit": "Misano World Circuit",
         "organizer": "Rossocorsa"
     },
+    {
+        "date": "2026-05-18",
+        "title": "Turni crono",
+        "circuit": "Cremona Circuit",
+        "organizer": "Portami In Pista"
+    },
+    {
+        "date": "2026-05-25",
+        "title": "Turni crono",
+        "circuit": "Cremona Circuit",
+        "organizer": "Portami In Pista"
+    },
+    {
+        "date": "2026-06-01",
+        "title": "Turni crono",
+        "circuit": "Cremona Circuit",
+        "organizer": "Portami In Pista"
+    },
+    {
+        "date": "2026-06-02",
+        "title": "Turni crono",
+        "circuit": "Cremona Circuit",
+        "organizer": "Portami In Pista"
+    },
+    {
+        "date": "2026-06-22",
+        "title": "Turni crono",
+        "circuit": "Cremona Circuit",
+        "organizer": "Portami In Pista"
+    },
+    {
+        "date": "2026-06-29",
+        "title": "Turni crono",
+        "circuit": "Cremona Circuit",
+        "organizer": "Portami In Pista"
+    },
+    {
+        "date": "2026-07-12",
+        "title": "Turni crono",
+        "circuit": "Cremona Circuit",
+        "organizer": "Portami In Pista"
+    },
+    {
+        "date": "2026-07-13",
+        "title": "Turni crono",
+        "circuit": "Cremona Circuit",
+        "organizer": "Portami In Pista"
+    },
+    {
+        "date": "2026-07-14",
+        "title": "Turni crono",
+        "circuit": "Cremona Circuit",
+        "organizer": "Portami In Pista"
+    },
+    {
+        "date": "2026-08-22",
+        "title": "Turni crono",
+        "circuit": "Cremona Circuit",
+        "organizer": "Portami In Pista"
+    },
+    {
+        "date": "2026-08-23",
+        "title": "Turni crono",
+        "circuit": "Cremona Circuit",
+        "organizer": "Portami In Pista"
+    },
+    {
+        "date": "2026-10-05",
+        "title": "Turni crono",
+        "circuit": "Cremona Circuit",
+        "organizer": "Portami In Pista"
+    },
+    {
+        "date": "2026-06-15",
+        "title": "Turni crono",
+        "circuit": "Varano de' Melegari",
+        "organizer": "Portami In Pista"
+    },
+    {
+        "date": "2026-07-20",
+        "title": "Turni crono",
+        "circuit": "Varano de' Melegari",
+        "organizer": "Portami In Pista"
+    },
+    {
+        "date": "2026-09-07",
+        "title": "Turni crono",
+        "circuit": "Varano de' Melegari",
+        "organizer": "Portami In Pista"
+    },
+    {
+        "date": "2026-06-08",
+        "title": "Turni crono",
+        "circuit": "Misano World Circuit",
+        "organizer": "Portami In Pista"
+    },
+    {
+        "date": "2026-09-28",
+        "title": "Turni crono",
+        "circuit": "Misano World Circuit",
+        "organizer": "Portami In Pista"
+    },
+    {
+        "date": "2026-05-18",
+        "title": "Turni crono",
+        "circuit": "Cremona Circuit",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-05-22",
+        "title": "Turni crono",
+        "circuit": "Cremona Circuit",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-05-25",
+        "title": "Turni crono",
+        "circuit": "Cremona Circuit",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-05-31",
+        "title": "Turni crono",
+        "circuit": "Autodromo di Modena",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-06-01",
+        "title": "Turni crono",
+        "circuit": "Varano de' Melegari",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-06-01",
+        "title": "Turni crono",
+        "circuit": "Cremona Circuit",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-06-02",
+        "title": "Turni crono",
+        "circuit": "Cremona Circuit",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-06-14",
+        "title": "Turni crono",
+        "circuit": "Autodromo di Modena",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-06-15",
+        "title": "Turni crono",
+        "circuit": "Varano de' Melegari",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-06-21",
+        "title": "Turni crono",
+        "circuit": "Tazio Nuvolari 5260",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-06-24",
+        "title": "Turni crono",
+        "circuit": "Misano World Circuit",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-06-22",
+        "title": "Turni crono",
+        "circuit": "Cremona Circuit",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-06-29",
+        "title": "Turni crono",
+        "circuit": "Cremona Circuit",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-07-03",
+        "title": "Turni crono",
+        "circuit": "Autodromo di Modena",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-07-06",
+        "title": "Turni crono",
+        "circuit": "Mugello",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-07-10",
+        "title": "Turni crono",
+        "circuit": "Misano World Circuit",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-07-12",
+        "title": "Turni crono",
+        "circuit": "Cremona Circuit",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-07-13",
+        "title": "Turni crono",
+        "circuit": "Cremona Circuit",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-07-13",
+        "title": "Turni crono",
+        "circuit": "Misano World Circuit",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-07-20",
+        "title": "Turni crono",
+        "circuit": "Varano de' Melegari",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-07-27",
+        "title": "Turni crono",
+        "circuit": "Misano World Circuit",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-07-28",
+        "title": "Turni crono",
+        "circuit": "Misano World Circuit",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-08-07",
+        "title": "Turni crono",
+        "circuit": "Mugello",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-08-08",
+        "title": "Turni crono",
+        "circuit": "Mugello",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-08-09",
+        "title": "Turni crono",
+        "circuit": "Mugello",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-08-22",
+        "title": "Turni crono",
+        "circuit": "Cremona Circuit",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-08-23",
+        "title": "Turni crono",
+        "circuit": "Cremona Circuit",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-08-23",
+        "title": "Turni crono",
+        "circuit": "Varano de' Melegari",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-09-14",
+        "title": "Turni crono",
+        "circuit": "Varano de' Melegari",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-09-14",
+        "title": "Turni crono",
+        "circuit": "Cremona Circuit",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-09-20",
+        "title": "Turni crono",
+        "circuit": "Tazio Nuvolari 5260",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-09-25",
+        "title": "Turni crono",
+        "circuit": "Tazio Nuvolari 5260",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-09-28",
+        "title": "Turni crono",
+        "circuit": "Misano World Circuit",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-10-05",
+        "title": "Turni crono",
+        "circuit": "Cremona Circuit",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-10-05",
+        "title": "Turni crono",
+        "circuit": "Varano de' Melegari",
+        "organizer": "Prove Libere Moto"
+    },
+    {
+        "date": "2026-10-26",
+        "title": "Turni crono",
+        "circuit": "Misano World Circuit",
+        "organizer": "Prove Libere Moto"
+    },
 ];
